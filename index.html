@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retirement Nest Egg Savings Planner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bar-cell { transition: height 0.3s ease; }
+    details > summary { cursor: pointer; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-2xl md:text-3xl font-bold text-indigo-900 mb-2">Retirement Nest Egg Savings Planner</h1>
+    <p class="text-gray-600 mb-6">Project your retirement savings using compound interest</p>
+
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Details</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="currentAge" class="block text-sm font-medium text-gray-700 mb-1">Current Age</label>
+          <input id="currentAge" type="number" min="18" max="80" value="30"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label for="retireAge" class="block text-sm font-medium text-gray-700 mb-1">Retirement Age</label>
+          <input id="retireAge" type="number" min="40" max="90" value="65"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label for="currentSavings" class="block text-sm font-medium text-gray-700 mb-1">Current Savings ($)</label>
+          <input id="currentSavings" type="number" min="0" value="10000"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label for="annualContrib" class="block text-sm font-medium text-gray-700 mb-1">Annual Contribution ($)</label>
+          <input id="annualContrib" type="number" min="0" value="6000"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="annualReturn" class="block text-sm font-medium text-gray-700 mb-1">Expected Annual Return (%)</label>
+          <input id="annualReturn" type="number" min="0" max="30" step="0.1" value="7"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+      </div>
+      <button onclick="calculate()"
+        class="mt-5 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Calculate
+      </button>
+    </div>
+
+    <div id="results" class="hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-indigo-700 text-white rounded-2xl shadow p-5 text-center">
+          <p class="text-sm uppercase tracking-wide opacity-80">Projected Balance</p>
+          <p id="finalBalance" class="text-2xl font-bold mt-1"></p>
+        </div>
+        <div class="bg-green-600 text-white rounded-2xl shadow p-5 text-center">
+          <p class="text-sm uppercase tracking-wide opacity-80">4% Annual Withdrawal</p>
+          <p id="withdrawal" class="text-2xl font-bold mt-1"></p>
+        </div>
+        <div class="bg-blue-600 text-white rounded-2xl shadow p-5 text-center">
+          <p class="text-sm uppercase tracking-wide opacity-80">Monthly Withdrawal</p>
+          <p id="monthlyWithdrawal" class="text-2xl font-bold mt-1"></p>
+        </div>
+      </div>
+
+      <!-- SVG Bar Chart -->
+      <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Balance Growth by Decade</h2>
+        <div id="barChart" class="flex items-end justify-around gap-2 h-48 px-2"></div>
+        <div id="barLabels" class="flex justify-around gap-2 mt-2 text-xs text-gray-500 px-2"></div>
+      </div>
+
+      <!-- Year-by-year table -->
+      <div class="bg-white rounded-2xl shadow-md p-6">
+        <details>
+          <summary class="text-lg font-semibold text-gray-800 focus:outline-none">
+            Year-by-Year Breakdown ▼
+          </summary>
+          <div class="overflow-x-auto mt-4">
+            <table class="w-full text-sm text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-3 py-2 font-semibold text-gray-700 border-b">Age</th>
+                  <th class="px-3 py-2 font-semibold text-gray-700 border-b">Year</th>
+                  <th class="px-3 py-2 font-semibold text-gray-700 border-b text-right">Balance</th>
+                  <th class="px-3 py-2 font-semibold text-gray-700 border-b text-right">Interest Earned</th>
+                  <th class="px-3 py-2 font-semibold text-gray-700 border-b text-right">Total Contributed</th>
+                </tr>
+              </thead>
+              <tbody id="yearTable"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div id="errorMsg" class="hidden bg-red-100 border border-red-400 text-red-700 rounded-lg px-4 py-3 mt-4"></div>
+  </div>
+
+  <script>
+    function fmt(n) {
+      return '$' + Math.round(n).toLocaleString('en-US');
+    }
+
+    function calculate() {
+      const currentAge = parseInt(document.getElementById('currentAge').value);
+      const retireAge = parseInt(document.getElementById('retireAge').value);
+      const currentSavings = parseFloat(document.getElementById('currentSavings').value);
+      const annualContrib = parseFloat(document.getElementById('annualContrib').value);
+      const annualReturn = parseFloat(document.getElementById('annualReturn').value) / 100;
+
+      const errEl = document.getElementById('errorMsg');
+      errEl.classList.add('hidden');
+
+      if (isNaN(currentAge) || isNaN(retireAge) || isNaN(currentSavings) || isNaN(annualContrib) || isNaN(annualReturn)) {
+        errEl.textContent = 'Please fill in all fields with valid numbers.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (retireAge <= currentAge) {
+        errEl.textContent = 'Retirement age must be greater than current age.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const years = retireAge - currentAge;
+      const rows = [];
+      let balance = currentSavings;
+      let totalContrib = currentSavings;
+
+      for (let y = 1; y <= years; y++) {
+        const interest = balance * annualReturn;
+        balance = balance + interest + annualContrib;
+        totalContrib += annualContrib;
+        rows.push({ age: currentAge + y, year: y, balance, interest, totalContrib });
+      }
+
+      document.getElementById('finalBalance').textContent = fmt(balance);
+      const annualWithdraw = balance * 0.04;
+      document.getElementById('withdrawal').textContent = fmt(annualWithdraw) + '/yr';
+      document.getElementById('monthlyWithdrawal').textContent = fmt(annualWithdraw / 12) + '/mo';
+
+      // Build year table
+      const tbody = document.getElementById('yearTable');
+      tbody.innerHTML = '';
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.className = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+        tr.innerHTML = `
+          <td class="px-3 py-1.5 text-gray-700">${r.age}</td>
+          <td class="px-3 py-1.5 text-gray-500">${r.year}</td>
+          <td class="px-3 py-1.5 text-right font-medium text-indigo-700">${fmt(r.balance)}</td>
+          <td class="px-3 py-1.5 text-right text-green-600">${fmt(r.interest)}</td>
+          <td class="px-3 py-1.5 text-right text-gray-600">${fmt(r.totalContrib)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Build decade bar chart
+      const decades = [];
+      for (let age = currentAge + 10; age <= retireAge; age += 10) {
+        const row = rows.find(r => r.age === age) || rows[rows.length - 1];
+        decades.push({ label: `Age ${row.age}`, balance: row.balance });
+      }
+      if (decades.length === 0 || decades[decades.length - 1].label !== `Age ${retireAge}`) {
+        decades.push({ label: `Age ${retireAge}`, balance: rows[rows.length - 1].balance });
+      }
+
+      const maxBal = Math.max(...decades.map(d => d.balance));
+      const chartEl = document.getElementById('barChart');
+      const labelsEl = document.getElementById('barLabels');
+      chartEl.innerHTML = '';
+      labelsEl.innerHTML = '';
+
+      decades.forEach(d => {
+        const pct = maxBal > 0 ? (d.balance / maxBal) * 100 : 0;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex flex-col items-center flex-1';
+
+        const barOuter = document.createElement('div');
+        barOuter.className = 'w-full flex items-end justify-center h-full';
+
+        const bar = document.createElement('div');
+        bar.className = 'w-full rounded-t-lg bg-indigo-500 relative group';
+        bar.style.height = pct + '%';
+        bar.style.minHeight = '4px';
+        bar.setAttribute('aria-label', `${d.label}: ${fmt(d.balance)}`);
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity';
+        tooltip.textContent = fmt(d.balance);
+        bar.appendChild(tooltip);
+        barOuter.appendChild(bar);
+        wrapper.appendChild(barOuter);
+        chartEl.appendChild(wrapper);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'text-center text-xs text-gray-500 mt-1';
+        lbl.textContent = d.label;
+        labelsEl.appendChild(lbl);
+      });
+
+      document.getElementById('results').classList.remove('hidden');
+    }
+
+    calculate();
+  </script>
+</body>
+</html>
